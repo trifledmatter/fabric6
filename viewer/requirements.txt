@@ -1,0 +1,16 @@
+annotated-types==0.7.0
+freetype-py==2.5.1
+hsluv==5.0.4
+imageio==2.37.0
+kiwisolver==1.4.8
+numpy==2.2.2
+packaging==24.2
+pillow==11.1.0
+pydantic==2.10.6
+pydantic_core==2.27.2
+PyQt5==5.15.11
+PyQt5-Qt5==5.15.16
+PyQt5_sip==12.17.0
+trimesh==4.6.1
+typing_extensions==4.12.2
+vispy==0.14.3
