@@ -1,11 +1,3 @@
-"""
-Primitives for precision modeling using CadQuery.
-
-This module defines several primitive objects (Cube, Sphere, Pyramid, Cylinder)
-that inherit from BaseObject. They can serve as building blocks to construct a humanoid
-or other complex assemblies.
-"""
-
 import cadquery as cq
 import numpy as np
 import trimesh
@@ -126,10 +118,6 @@ class Pyramid(BaseObject):
     def build(self) -> None:
         base = self.parameters.get("base", 10)
         height = self.parameters.get("height", 15)
-
-        # We define the base as a square, then move up 'height' and define
-        # a very small square (0.001 x 0.001) to approximate the apex as a point.
-        # Then we loft between them with ruled edges.
         self.model = (
             cq.Workplane("XY")
             .rect(base, base)

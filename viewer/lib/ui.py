@@ -1,9 +1,5 @@
-# ui.py
-# pylint: disable=no-name-in-module,import-error,no-member,unused-argument,broad-exception-caught,missing-module-docstring,missing-function-docstring,missing-class-docstring
-
 import numpy as np
 from PyQt5.QtWidgets import QInputDialog
-
 from PyQt5.QtWidgets import (
     QMainWindow,
     QAction,
@@ -15,12 +11,10 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QSurfaceFormat
 from PyQt5.QtCore import QTimer
-
 from vispy import scene, gloo
 from vispy.scene.visuals import XYZAxis, Mesh
 import trimesh
 import imageio
-
 from .config import ViewerConfig
 
 
@@ -43,28 +37,23 @@ class ViewerWindow(QMainWindow):
         self.mesh = mesh
         self.quality = getattr(self.config, "quality", 12)
         self.autopan_enabled = True
-        self.autopan_speed = 0.30  # degrees per timer step
+        self.autopan_speed = 0.30
         self.user_interacting = False
-
-        # Updated default environment light parameters with specular settings.
         self.environment_light = {
             "color": (1, 1, 1, 1),
             "intensity": 1.0,
             "ambient": 0.3,
-            "direction": (0, 0, -1),  # Fixed: light coming from the camera.
+            "direction": (0, 0, -1),
             "specular": 0.5,
             "shininess": 32.0,
         }
-
         self.autopan_timer = QTimer(self)
         self.autopan_timer.setInterval(20)
         self.autopan_timer.timeout.connect(self.autopan_step)
-
         self.autopan_action = QAction("Autopan", self)
         self.autopan_action.setCheckable(True)
         self.autopan_action.toggled.connect(self.toggle_autopan)
         self.autopan_action.setChecked(True)
-
         self.init_canvas()
         self.create_menu()
         self.create_toolbar()
@@ -84,12 +73,8 @@ class ViewerWindow(QMainWindow):
         self.setCentralWidget(self.canvas.native)
         self.setWindowTitle(f"{self.config.model_dump()['file_path']}")
         self.view = self.canvas.central_widget.add_view()
-
-        # Ensure your trimesh object has vertex normals computed.
         if not hasattr(self.mesh, "vertex_normals") or self.mesh.vertex_normals is None:
             self.mesh.vertex_normals = self.mesh.compute_vertex_normals()
-
-        # Create our main mesh visual.
         vertices = np.array(self.mesh.vertices, dtype=np.float32)
         faces = np.array(self.mesh.faces)
         self.mesh_visual = Mesh(
@@ -98,13 +83,9 @@ class ViewerWindow(QMainWindow):
             color=(0.5, 0.5, 1, 1),
         )
         self.view.add(self.mesh_visual)
-
-        # --- NEW: Create the outline (border) mesh using wireframe rendering ---
         self.border_mesh = self.create_border_mesh(vertices, faces, scale=1.02)
-        self.border_mesh.visible = False  # Start with the border hidden.
+        self.border_mesh.visible = False
         self.view.add(self.border_mesh)
-
-        # Set up the camera.
         min_distance = 2.0
         computed_distance = self.mesh.extents.max() * 5
         self.view.camera = scene.TurntableCamera(
@@ -112,12 +93,8 @@ class ViewerWindow(QMainWindow):
         )
         self.view.camera.center = self.mesh.centroid
         self.axis = XYZAxis(parent=self.view.scene)
-
-        # Connect mouse events for autopan.
         self.canvas.events.mouse_press.connect(self.on_mouse_press)
         self.canvas.events.mouse_release.connect(self.on_mouse_release)
-
-        # Update the shader lighting parameters.
         self.update_lighting()
 
     def update_lighting(self):
@@ -144,19 +121,13 @@ class ViewerWindow(QMainWindow):
             pass
 
     def create_border_mesh(self, vertices, faces, scale=1.02):
-        """
-        Create a slightly scaled-up version of the mesh rendered in wireframe mode to simulate an outline.
-        """
-        # Scale vertices by the given factor.
         border_vertices = vertices * scale
-        # Create a mesh visual in black with wireframe mode.
         border_mesh = Mesh(
             vertices=border_vertices,
             faces=faces,
             color=(0, 0, 0, 1),
-            mode="lines",  # Render as wireframe.
+            mode="lines",
         )
-        # Optionally adjust GL state so the lines always appear on top.
         border_mesh.set_gl_state(depth_test=False)
         border_mesh.order = 10
         return border_mesh
@@ -174,49 +145,38 @@ class ViewerWindow(QMainWindow):
     def create_toolbar(self):
         toolbar = QToolBar("Main Toolbar")
         self.addToolBar(toolbar)
-
         toggle_axis_action = QAction("Toggle Axis", self)
         toggle_axis_action.triggered.connect(self.toggle_axis)
         toolbar.addAction(toggle_axis_action)
-
         change_bg_action = QAction("Change Background", self)
         change_bg_action.triggered.connect(self.change_background_color)
         toolbar.addAction(change_bg_action)
-
         change_model_color_action = QAction("Change Model Color", self)
         change_model_color_action.triggered.connect(self.change_model_color)
         toolbar.addAction(change_model_color_action)
         toolbar.addAction(self.autopan_action)
-
         set_autopan_speed_action = QAction("Set Autopan Speed", self)
         set_autopan_speed_action.triggered.connect(self.set_autopan_speed)
         toolbar.addAction(set_autopan_speed_action)
-
         inc_quality_action = QAction("Increase Quality", self)
         inc_quality_action.triggered.connect(self.increase_quality)
         toolbar.addAction(inc_quality_action)
-
         dec_quality_action = QAction("Decrease Quality", self)
         dec_quality_action.triggered.connect(self.decrease_quality)
         toolbar.addAction(dec_quality_action)
-
         toggle_outline_action = QAction("Toggle Outline", self)
         toggle_outline_action.setCheckable(True)
         toggle_outline_action.toggled.connect(self.toggle_border)
         toolbar.addAction(toggle_outline_action)
-
         screenshot_action = QAction("Save Screenshot", self)
         screenshot_action.triggered.connect(self.save_screenshot)
         toolbar.addAction(screenshot_action)
-
         reload_action = QAction("Reload Mesh", self)
         reload_action.triggered.connect(self.reload_mesh)
         toolbar.addAction(reload_action)
-
         configure_env_light_action = QAction("Configure Environment Light", self)
         configure_env_light_action.triggered.connect(self.configure_environment_light)
         toolbar.addAction(configure_env_light_action)
-
         exit_action = QAction("Exit", self)
         exit_action.triggered.connect(self.close)
         toolbar.addAction(exit_action)
@@ -259,7 +219,6 @@ class ViewerWindow(QMainWindow):
         about_action = QAction("About", self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
-
         lighting_menu = menu_bar.addMenu("Lighting")
         configure_env_light_menu_action = QAction("Configure Environment Light", self)
         configure_env_light_menu_action.triggered.connect(
@@ -269,9 +228,6 @@ class ViewerWindow(QMainWindow):
 
     @safe_slot
     def toggle_border(self, enabled):
-        """
-        Toggle the visibility of the border (outline) mesh.
-        """
         self.border_mesh.visible = enabled
         self.canvas.update()
 
@@ -358,8 +314,8 @@ class ViewerWindow(QMainWindow):
     def change_model_color(self, *args, **kwargs):
         color = QColorDialog.getColor()
         if color.isValid():
-            new_color = color.getRgbF()  # Returns a tuple (r, g, b, a)
-            self.mesh_visual.color = new_color  # Set the visual's color property.
+            new_color = color.getRgbF()
+            self.mesh_visual.color = new_color
             self.canvas.update()
 
     @safe_slot
@@ -389,7 +345,6 @@ class ViewerWindow(QMainWindow):
         self.view.camera.azimuth += self.autopan_speed
         self.canvas.update()
 
-    # --- Mouse events for autopan only ---
     def on_mouse_press(self, event):
         if event.button == 1 and self.autopan_timer.isActive():
             self.autopan_timer.stop()
@@ -451,18 +406,15 @@ class ViewerWindow(QMainWindow):
             self.mesh_visual.set_data(vertices=new_mesh.vertices, faces=new_mesh.faces)
             self.view.camera.center = new_mesh.centroid
             self.view.camera.distance = new_mesh.extents.max() * 2
-            # Recreate the border mesh for the new model.
             vertices = np.array(new_mesh.vertices, dtype=np.float32)
             faces = np.array(new_mesh.faces)
             self.border_mesh = self.create_border_mesh(vertices, faces, scale=1.02)
-            # Ensure the border is hidden by default.
             self.border_mesh.visible = False
             self.view.add(self.border_mesh)
             self.canvas.update()
 
     @safe_slot
     def configure_environment_light(self, *args, **kwargs):
-        # Configure ambient light.
         ambient, ok = QInputDialog.getDouble(
             self,
             "Set Ambient Light",
@@ -474,8 +426,6 @@ class ViewerWindow(QMainWindow):
         )
         if ok:
             self.environment_light["ambient"] = ambient
-
-        # Configure light intensity.
         intensity, ok = QInputDialog.getDouble(
             self,
             "Set Light Intensity",
@@ -487,8 +437,6 @@ class ViewerWindow(QMainWindow):
         )
         if ok:
             self.environment_light["intensity"] = intensity
-
-        # Configure specular strength.
         specular, ok = QInputDialog.getDouble(
             self,
             "Set Specular Strength",
@@ -500,8 +448,6 @@ class ViewerWindow(QMainWindow):
         )
         if ok:
             self.environment_light["specular"] = specular
-
-        # Configure shininess.
         shininess, ok = QInputDialog.getDouble(
             self,
             "Set Shininess",
@@ -513,12 +459,9 @@ class ViewerWindow(QMainWindow):
         )
         if ok:
             self.environment_light["shininess"] = shininess
-
-        # Configure light color.
         color = QColorDialog.getColor()
         if color.isValid():
             new_color = color.getRgbF()
             self.environment_light["color"] = new_color
-
         self.update_lighting()
         self.canvas.update()
